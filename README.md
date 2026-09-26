@@ -18,7 +18,11 @@ Images are built for `linux/amd64` and `linux/arm64`.
 
 ## How it stays current
 
-A GitHub Actions workflow runs daily. It looks up the latest upstream release, and if that version is not published yet, builds it and pushes it with the tags above. Nothing is built when upstream has not released. Pair it with [Watchtower](https://containrrr.dev/watchtower/) or a similar tool to pick up new `latest` images automatically.
+A GitHub Actions workflow runs daily. It looks up the latest upstream release, and if that version is not published yet, builds it and pushes it with the tags above. Nothing is built when upstream has not released.
+
+Every Monday the current release is rebuilt anyway, to pick up security fixes in the `nginx` and `node` base images. This republishes the same version tags with a new image, so an auto-updater restarts the container about once a week.
+
+Pair it with [Watchtower](https://containrrr.dev/watchtower/) or a similar tool to pick up new `latest` images automatically.
 
 ## 1. Allow the swatch in Spoolman's CORS settings
 

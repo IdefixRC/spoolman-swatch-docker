@@ -2,10 +2,12 @@ name: Build image
 
 # Publishes each upstream release of spoolman-filament-swatch to GHCR.
 # The daily run is a no-op unless upstream has released a version that is not yet published.
+# The weekly run always rebuilds the current release, to pick up nginx and node base image fixes.
 
 on:
   schedule:
-    - cron: "17 3 * * *"
+    - cron: "17 3 * * *" # daily: new upstream release?
+    - cron: "47 3 * * 1" # weekly, Mondays: forced rebuild for base image updates
   workflow_dispatch:
     inputs:
       force:
@@ -42,8 +44,8 @@ jobs:
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
-          # A change to this repo's own build files always rebuilds.
-          FORCE: ${{ github.event_name == 'push' || inputs.force == true }}
+          # A change to this repo's own build files, or the weekly schedule, always rebuilds.
+          FORCE: ${{ github.event_name == 'push' || inputs.force == true || github.event.schedule == '47 3 * * 1' }}
         run: |
           tag=$(gh api repos/Disane87/spoolman-filament-swatch/releases/latest --jq .tag_name)
           image="ghcr.io/${GITHUB_REPOSITORY,,}"
