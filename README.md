@@ -26,13 +26,16 @@ Pair it with [Watchtower](https://containrrr.dev/watchtower/) or a similar tool 
 
 ## 1. Allow the swatch in Spoolman's CORS settings
 
-The swatch runs entirely in the browser and calls the Spoolman API directly, so Spoolman has to allow the swatch's origin. Add this to Spoolman's environment and restart it:
+The swatch runs entirely in the browser and calls the Spoolman API directly, so Spoolman has to allow the swatch's origin. Add this to the Spoolman service in its compose file and restart it:
 
 ```yaml
-SPOOLMAN_CORS_ORIGIN: "http://<docker-host>:8090"
+    environment:
+      - SPOOLMAN_CORS_ORIGIN=http://<docker-host>:8090
 ```
 
-Use the full origin, with the scheme and port, exactly as it appears in the browser's address bar. Recent Spoolman versions compare origins exactly, so a bare hostname does not match. Separate several origins with commas and no spaces.
+Use the swatch's origin, not Spoolman's: the full address you open the swatch at, with the scheme and port, exactly as it appears in the browser's address bar. Behind a reverse proxy that is something like `https://swatch.example.com`. Recent Spoolman versions compare origins exactly, so a bare hostname does not match. Separate several origins with commas and no spaces.
+
+In this list form, don't quote the value on its own. `- SPOOLMAN_CORS_ORIGIN="http://..."` passes the quote characters to Spoolman and nothing matches.
 
 If the swatch is served over HTTPS, Spoolman must be too, or the browser blocks the calls as mixed content.
 
