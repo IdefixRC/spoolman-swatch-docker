@@ -1,14 +1,10 @@
-name: spoolman-swatch
-
 services:
   swatch:
-    build:
-      context: .
-      pull: true            # refresh the node and nginx base images on every build
-      args:
-        SWATCH_VERSION: ${SWATCH_VERSION:?run ./update.sh first, it writes SWATCH_VERSION to .env}
-    image: spoolman-swatch:${SWATCH_VERSION}
+    image: ghcr.io/idefixrc/spoolman-swatch-docker:latest
     container_name: spoolman-swatch
     restart: unless-stopped
     ports:
-      - "${SWATCH_PORT:-8090}:80"
+      - "8090:80"
+    labels:
+      # Only needed if Watchtower runs with --label-enable; harmless otherwise.
+      - com.centurylinklabs.watchtower.enable=true

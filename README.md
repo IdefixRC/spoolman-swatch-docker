@@ -1,14 +1,24 @@
 # spoolman-swatch-docker
 
-Self-host [Spoolman Filament Swatch](https://github.com/Disane87/spoolman-filament-swatch) on your own Docker host, kept on the latest upstream release.
+A Docker image of [Spoolman Filament Swatch](https://github.com/Disane87/spoolman-filament-swatch), kept on the latest upstream release.
 
-Upstream publishes the app only as a static site on GitHub Pages. This repo builds a release tag unmodified and serves it with nginx. A small script checks for new releases and rebuilds.
+Upstream publishes the app only as a static site on GitHub Pages. This repo builds each upstream release unmodified, serves it with nginx, and publishes the image to GitHub Container Registry:
 
-## Requirements
+```
+ghcr.io/idefixrc/spoolman-swatch-docker
+```
 
-- Docker with the Compose plugin (v2.17 or newer)
-- `curl`
-- A running [Spoolman](https://github.com/Donkie/Spoolman) instance the browser can reach
+| Tag | Meaning |
+|---|---|
+| `latest` | Newest upstream release |
+| `1.16.0` | An exact upstream release |
+| `1.16` | Newest patch of a minor release |
+
+Images are built for `linux/amd64` and `linux/arm64`.
+
+## How it stays current
+
+A GitHub Actions workflow runs daily. It looks up the latest upstream release, and if that version is not published yet, builds it and pushes it with the tags above. Nothing is built when upstream has not released. Pair it with [Watchtower](https://containrrr.dev/watchtower/) or a similar tool to pick up new `latest` images automatically.
 
 ## 1. Allow the swatch in Spoolman's CORS settings
 
@@ -22,36 +32,36 @@ Use the full origin, with the scheme and port, exactly as it appears in the brow
 
 If the swatch is served over HTTPS, Spoolman must be too, or the browser blocks the calls as mixed content.
 
-## 2. Deploy
+## 2. Run it
 
-```sh
-git clone https://github.com/IdefixRC/spoolman-swatch-docker.git /opt/spoolman-swatch
-cd /opt/spoolman-swatch
-./update.sh
+```yaml
+services:
+  swatch:
+    image: ghcr.io/idefixrc/spoolman-swatch-docker:latest
+    container_name: spoolman-swatch
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
 ```
 
-`update.sh` creates `.env` from `.env.example`, looks up the latest release, builds it and starts the container. Change `SWATCH_PORT` in `.env` to use a port other than 8090.
+```sh
+docker compose up -d
+```
 
 Open `http://<docker-host>:8090` and enter your Spoolman URL. Each browser remembers it separately. To preset it, open `http://<docker-host>:8090/?surl=<spoolman-url>` once.
 
-## 3. Keep it updated
+To stay on one version, replace `latest` with a version tag such as `1.16.0`.
 
-Run `update.sh` daily from cron:
-
-```sh
-(crontab -l 2>/dev/null; echo "0 4 * * * /opt/spoolman-swatch/update.sh >> /var/log/spoolman-swatch.log 2>&1") | crontab -
-```
-
-It follows published releases, not the `main` branch. If a build fails, the running container and `.env` are left as they were.
-
-Every build also pulls fresh `node` and `nginx` base images.
-
-## Roll back
-
-Set `SWATCH_VERSION` in `.env` to an earlier tag and run:
+## Building locally
 
 ```sh
-docker compose up -d --build
+docker build --build-arg SWATCH_VERSION=v1.16.0 -t spoolman-swatch .
 ```
 
-`update.sh` moves it forward again on its next run, so disable the cron job first if you want to stay on the old version.
+`SWATCH_VERSION` is an upstream release tag, including the `v`.
+
+## License
+
+The build files in this repo are MIT licensed. The app itself is [Spoolman Filament Swatch](https://github.com/Disane87/spoolman-filament-swatch) by Disane87, also under the MIT license.

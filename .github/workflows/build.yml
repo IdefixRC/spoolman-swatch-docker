@@ -1,0 +1,102 @@
+name: Build image
+
+# Publishes each upstream release of spoolman-filament-swatch to GHCR.
+# The daily run is a no-op unless upstream has released a version that is not yet published.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Rebuild even if the latest release is already published
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - nginx.conf
+      - .github/workflows/build.yml
+
+permissions:
+  contents: read
+  packages: write
+  actions: write # re-enabling the workflow keeps the schedule alive, see the last step
+
+concurrency:
+  group: build-image
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find the latest upstream release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # A change to this repo's own build files always rebuilds.
+          FORCE: ${{ github.event_name == 'push' || inputs.force == true }}
+        run: |
+          tag=$(gh api repos/Disane87/spoolman-filament-swatch/releases/latest --jq .tag_name)
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          if [ "$FORCE" != "true" ] && docker manifest inspect "$image:${tag#v}" > /dev/null 2>&1; then
+            echo "$tag is already published as $image:${tag#v}"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Building $tag"
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.release.outputs.build == 'true'
+
+      - uses: docker/setup-qemu-action@v3
+        if: steps.release.outputs.build == 'true'
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.release.outputs.build == 'true'
+
+      - name: Image tags and labels
+        id: meta
+        if: steps.release.outputs.build == 'true'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.release.outputs.image }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.release.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.release.outputs.tag }}
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.title=Spoolman Filament Swatch
+            org.opencontainers.image.description=Self-hostable build of Disane87/spoolman-filament-swatch ${{ steps.release.outputs.tag }}
+            org.opencontainers.image.version=${{ steps.release.outputs.tag }}
+
+      - name: Build and push
+        if: steps.release.outputs.build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          pull: true
+          push: true
+          build-args: SWATCH_VERSION=${{ steps.release.outputs.tag }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      # GitHub disables scheduled workflows in public repos after 60 days without repo activity.
+      # Upstream can easily go that long between releases, so re-enable on every scheduled run.
+      - name: Keep the schedule alive
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/build.yml/enable"
