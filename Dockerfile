@@ -14,5 +14,7 @@ WORKDIR /app
 RUN npm ci && npm run build
 
 FROM nginx:stable-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# true: / redirects straight to the app instead of upstream's landing page.
+ENV DIRECT_APP_PAGE=false
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html

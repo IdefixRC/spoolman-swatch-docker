@@ -1,0 +1,40 @@
+# The nginx image renders this with envsubst at startup, replacing only ${VARIABLES} that are set
+# in the container's environment. nginx's own $variables are left alone.
+
+# DIRECT_APP_PAGE=true skips upstream's landing page. Accepts true/1/yes in any case.
+map "${DIRECT_APP_PAGE}" $direct_app_page {
+    default           0;
+    ~*^(true|1|yes)$  1;
+}
+
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+
+    # Redirect with a relative Location. An absolute one would carry nginx's own http:// and port
+    # 80, which breaks behind a TLS-terminating reverse proxy.
+    absolute_redirect off;
+
+    location = / {
+        if ($direct_app_page) {
+            return 302 /app$is_args$args;
+        }
+        try_files $uri/ /index.html;
+    }
+
+    # Vue router uses HTML5 history, so unknown paths must fall back to the app.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Vite fingerprints everything under /assets, so it can be cached for good.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # index.html names the current asset files, so it must never be cached across upgrades.
+    location = /index.html {
+        add_header Cache-Control "no-cache";
+    }
+}

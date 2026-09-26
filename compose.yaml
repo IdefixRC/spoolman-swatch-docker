@@ -5,3 +5,6 @@ services:
     restart: unless-stopped
     ports:
       - "8090:80"
+    environment:
+      # true: open the app directly instead of the landing page
+      - DIRECT_APP_PAGE=false

@@ -18,7 +18,7 @@ on:
     branches: [main]
     paths:
       - Dockerfile
-      - nginx.conf
+      - nginx.conf.template
       - .github/workflows/build.yml
 
 permissions:
@@ -82,6 +82,38 @@ jobs:
             org.opencontainers.image.title=Spoolman Filament Swatch
             org.opencontainers.image.description=Self-hostable build of Disane87/spoolman-filament-swatch ${{ steps.release.outputs.tag }}
             org.opencontainers.image.version=${{ steps.release.outputs.tag }}
+
+      - name: Build for testing
+        if: steps.release.outputs.build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          pull: true
+          load: true
+          build-args: SWATCH_VERSION=${{ steps.release.outputs.tag }}
+          tags: swatch:test
+
+      - name: Smoke test
+        if: steps.release.outputs.build == 'true'
+        run: |
+          docker run -d --name landing -p 8081:80 swatch:test
+          docker run -d --name direct -p 8082:80 -e DIRECT_APP_PAGE=TRUE swatch:test
+          sleep 2
+          fail() { echo "FAIL: $*"; docker logs landing; docker logs direct; exit 1; }
+
+          # Default: / serves the app shell (landing page), never cached
+          curl -fsS -D headers -o body http://localhost:8081/ || fail "/ did not answer"
+          grep -q '<div id="app"' body || fail "/ is not index.html"
+          grep -qi '^cache-control: no-cache' headers || fail "/ is cacheable"
+          # Deep links fall back to the app shell
+          curl -fsS http://localhost:8081/app/swatch | grep -q '<div id="app"' || fail "/app/swatch fallback"
+
+          # DIRECT_APP_PAGE: / redirects to the app, relative, keeping the query string
+          result=$(curl -s -o /dev/null -w '%{http_code} %header{location}' "http://localhost:8082/?surl=x")
+          [ "$result" = "302 /app?surl=x" ] || fail "direct redirect was '$result'"
+          curl -fsS http://localhost:8082/app/swatch | grep -q '<div id="app"' || fail "direct /app/swatch"
+
+          echo "Smoke test passed"
 
       - name: Build and push
         if: steps.release.outputs.build == 'true'

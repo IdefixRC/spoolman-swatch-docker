@@ -46,6 +46,9 @@ services:
     restart: unless-stopped
     ports:
       - "8090:80"
+    environment:
+      # true: open the app directly instead of the landing page
+      - DIRECT_APP_PAGE=false
 ```
 
 ```sh
@@ -55,6 +58,14 @@ docker compose up -d
 Open `http://<docker-host>:8090` and enter your Spoolman URL. Each browser remembers it separately. To preset it, open `http://<docker-host>:8090/?surl=<spoolman-url>` once.
 
 To stay on one version, replace `latest` with a version tag such as `1.16.0`.
+
+## Options
+
+| Variable | Default | Effect |
+|---|---|---|
+| `DIRECT_APP_PAGE` | `false` | `true` redirects `/` straight to the app, skipping the landing page. Query parameters such as `?surl=` are kept. |
+
+The redirect happens only when `/` is loaded from the server. Inside the app, links that point back to the landing page still show it.
 
 ## Building locally
 
