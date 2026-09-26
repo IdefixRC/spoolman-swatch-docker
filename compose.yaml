@@ -5,6 +5,3 @@ services:
     restart: unless-stopped
     ports:
       - "8090:80"
-    labels:
-      # Only needed if Watchtower runs with --label-enable; harmless otherwise.
-      - com.centurylinklabs.watchtower.enable=true

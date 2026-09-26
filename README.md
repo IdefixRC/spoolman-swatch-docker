@@ -46,8 +46,6 @@ services:
     restart: unless-stopped
     ports:
       - "8090:80"
-    labels:
-      - com.centurylinklabs.watchtower.enable=true
 ```
 
 ```sh
