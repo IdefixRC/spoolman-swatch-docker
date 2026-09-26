@@ -33,7 +33,7 @@ The swatch runs entirely in the browser and calls the Spoolman API directly, so 
       - SPOOLMAN_CORS_ORIGIN=http://<docker-host>:8090
 ```
 
-Use the swatch's origin, not Spoolman's: the full address you open the swatch at, with the scheme and port, exactly as it appears in the browser's address bar. Behind a reverse proxy that is something like `https://swatch.example.com`. Recent Spoolman versions compare origins exactly, so a bare hostname does not match. Separate several origins with commas and no spaces.
+Use the swatch's origin, not Spoolman's: the full address you open the swatch at, with the scheme and port, exactly as it appears in the browser's address bar. Behind a reverse proxy that is something like `https://swatch.example.com`. Spoolman compares origins exactly, so a bare hostname does not match, whatever other guides say. Separate several origins with commas and no spaces.
 
 In this list form, don't quote the value on its own. `- SPOOLMAN_CORS_ORIGIN="http://..."` passes the quote characters to Spoolman and nothing matches.
 
